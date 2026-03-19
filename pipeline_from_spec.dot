@@ -158,12 +158,19 @@ replan -> done [label=\"stuck\", condition=\"outcome=fail\"];
 check_budget [shape=parallelogram, label=\"Check Retry Budget\",
     tool_command=\"#!/bin/sh\\nset -eu\\nmkdir -p .tracker\\nCOUNTER='.tracker/e2e_count'\\ncount=0\\n[ -f \\\"$COUNTER\\\" ] && count=$(cat \\\"$COUNTER\\\")\\ncount=$((count + 1))\\nprintf '%s' \\\"$count\\\" > \\\"$COUNTER\\\"\\nif [ \\\"$count\\\" -gt 5 ]; then\\n  printf 'budget_exhausted'\\nelse\\n  printf 'budget_ok'\\nfi\"]
 
-### 6. Language-Aware Build Validation (before final review)
+### 6. Stdout Hygiene for ALL tool_command Scripts
+The pipeline engine matches context.tool_stdout EXACTLY. If a tool_command prints anything besides the routing token to stdout, the condition will never match and the pipeline STALLS SILENTLY. Rules:
+- ALL command output (tests, linters, builds) MUST go to stderr via >&2
+- stdout MUST contain ONLY the routing token (e.g., printf 'pass', printf 'fail')
+- NEVER use 2>&1 — it merges noisy output into stdout and breaks routing
+- Example: go test ./... >&2 || fail=1 (output to stderr, capture exit code)
+
+### 7. Language-Aware Build Validation (before final review, follows stdout hygiene)
 IMPORTANT: validate_build must output 'validation-pass', 'validation-fail', or 'validation-unknown' as the LAST thing printed. Do NOT use 'exit 1' on test/lint failure — that crashes the node instead of routing. Capture exit codes and branch on them:
 validate_build [shape=parallelogram, label=\"Validate Full Build\",
-    tool_command=\"#!/bin/sh\\nset +e\\nfail=0\\nif [ -f pyproject.toml ]; then\\n  uv run pytest -v 2>&1 || fail=1\\n  uv run ruff check . 2>&1 || fail=1\\n  if [ \\\"$fail\\\" -eq 0 ]; then printf 'validation-pass'; else printf 'validation-fail'; fi\\nelif [ -f go.mod ]; then\\n  go build ./... && go test ./... 2>&1 || fail=1\\n  if [ \\\"$fail\\\" -eq 0 ]; then printf 'validation-pass'; else printf 'validation-fail'; fi\\nelif [ -f package.json ]; then\\n  npm test 2>&1 || fail=1\\n  if [ \\\"$fail\\\" -eq 0 ]; then printf 'validation-pass'; else printf 'validation-fail'; fi\\nelse\\n  printf 'validation-unknown'\\nfi\"]
+    tool_command=\"#!/bin/sh\\nset +e\\nfail=0\\nif [ -f pyproject.toml ]; then\\n  uv run pytest -v >&2 || fail=1\\n  uv run ruff check . >&2 || fail=1\\n  if [ \\\"$fail\\\" -eq 0 ]; then printf 'validation-pass'; else printf 'validation-fail'; fi\\nelif [ -f go.mod ]; then\\n  go build ./... >&2 && go test ./... >&2 || fail=1\\n  if [ \\\"$fail\\\" -eq 0 ]; then printf 'validation-pass'; else printf 'validation-fail'; fi\\nelif [ -f package.json ]; then\\n  npm test >&2 || fail=1\\n  if [ \\\"$fail\\\" -eq 0 ]; then printf 'validation-pass'; else printf 'validation-fail'; fi\\nelse\\n  printf 'validation-unknown'\\nfi\"]
 
-### 7. Review That Reads Code (final review prompt must include)
+### 8. Review That Reads Code (final review prompt must include)
 ## IRON LAW: NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION
 Run commands. Read output. Check exit codes. THEN make claims.
 1. Get full diff  2. Read every changed file  3. Run test suite
@@ -204,6 +211,7 @@ Append a generation summary to docs/plans/generation_worklog.md:
 - Create human gates unless the spec explicitly requests them (default: fully autonomous/headless)
 - Write prompts that assume context from other nodes (each prompt is self-contained)
 - Use 'exit 1' in tool_command scripts to signal failure — output a routable string instead
+- Use '2>&1' in tool_command scripts — this merges command output into stdout and breaks context.tool_stdout routing. Redirect noisy command output to stderr with '>&2' and reserve stdout for ONLY the routing token (e.g., printf 'pass' or printf 'fail')
 
 ## Success Criteria
 - pipeline.dot exists in working directory root
@@ -297,7 +305,7 @@ Append to docs/plans/generation_worklog.md:
     // ==============================
     score_quality [shape=parallelogram,
         label="Score Pipeline Quality",
-        tool_command="#!/bin/sh\nset -eu\nscore=0\ntotal=7\n# Pattern 1: Resume support\ngrep -qi 'check_existing\\|Check Existing' pipeline.dot && score=$((score + 1))\n# Pattern 2: Scope gating\ngrep -qi 'scope_analysis\\|scope' pipeline.dot && score=$((score + 1))\n# Pattern 3: Per-phase verification (diamond verify nodes)\nverify_count=$(grep -c 'shape=diamond' pipeline.dot 2>/dev/null || echo 0)\n[ \"$verify_count\" -gt 0 ] && score=$((score + 1))\n# Pattern 4: Graduated escalation\ngrep -qi 'debug_investigate\\|debug\\|replan' pipeline.dot && score=$((score + 1))\n# Pattern 5: Budget tracking\ngrep -qi 'check_budget\\|budget' pipeline.dot && score=$((score + 1))\n# Pattern 6: Language-aware build validation\ngrep -qi 'validate_build' pipeline.dot && score=$((score + 1))\n# Pattern 7: Review reads code (IRON LAW)\ngrep -qi 'IRON LAW' pipeline.dot && score=$((score + 1))\n# Component coverage: count implement nodes vs spec components\nimpl_count=$(grep -c 'implement_' pipeline.dot 2>/dev/null || echo 0)\nprintf 'score=%s/%s impl=%s ' \"$score\" \"$total\" \"$impl_count\"\nif [ \"$score\" -ge 6 ]; then\n  printf 'quality_high'\nelif [ \"$score\" -ge 4 ]; then\n  printf 'quality_medium'\nelse\n  printf 'quality_low'\nfi"]
+        tool_command="#!/bin/sh\nset -eu\nscore=0\ntotal=7\n# Pattern 1: Resume support\ngrep -qi 'check_existing\\|Check Existing' pipeline.dot && score=$((score + 1))\n# Pattern 2: Scope gating\ngrep -qi 'scope_analysis\\|scope' pipeline.dot && score=$((score + 1))\n# Pattern 3: Per-phase verification (diamond verify nodes)\nverify_count=$(grep -c 'shape=diamond' pipeline.dot 2>/dev/null || echo 0)\n[ \"$verify_count\" -gt 0 ] && score=$((score + 1))\n# Pattern 4: Graduated escalation\ngrep -qi 'debug_investigate\\|debug\\|replan' pipeline.dot && score=$((score + 1))\n# Pattern 5: Budget tracking\ngrep -qi 'check_budget\\|budget' pipeline.dot && score=$((score + 1))\n# Pattern 6: Language-aware build validation\ngrep -qi 'validate_build' pipeline.dot && score=$((score + 1))\n# Pattern 7: Review reads code (IRON LAW)\ngrep -qi 'IRON LAW' pipeline.dot && score=$((score + 1))\n# Component coverage: count implement nodes vs spec components\nimpl_count=$(grep -c 'implement_' pipeline.dot 2>/dev/null || echo 0)\nprintf 'score=%s/%s impl=%s ' \"$score\" \"$total\" \"$impl_count\" >&2\nif [ \"$score\" -ge 6 ]; then\n  printf 'quality_high'\nelif [ \"$score\" -ge 4 ]; then\n  printf 'quality_medium'\nelse\n  printf 'quality_low'\nfi"]
 
     // ==============================
     // REFINE BUDGET CHECK
