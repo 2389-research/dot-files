@@ -61,6 +61,13 @@ For each component:
 ### Dependency Graph
 Draw the dependency graph in text: which components can run in parallel, which must be sequential.
 
+### Infrastructure Dependencies (for testing)
+List any services that need local emulators or daemons for tests to run:
+- [e.g., Firestore emulator on localhost:8080]
+- [e.g., Postgres on localhost:5432]
+- [e.g., Redis on localhost:6379]
+Include the start command and health check for each.
+
 ### Scope Analysis (v1 vs later)
 - IN: [components strictly needed for v1 MVP]
 - OUT: [components that can be deferred — integrations, nice-to-haves]
@@ -170,7 +177,13 @@ IMPORTANT: validate_build must output 'validation-pass', 'validation-fail', or '
 validate_build [shape=parallelogram, label=\"Validate Full Build\",
     tool_command=\"#!/bin/sh\\nset +e\\nfail=0\\nif [ -f pyproject.toml ]; then\\n  uv run pytest -v >&2 || fail=1\\n  uv run ruff check . >&2 || fail=1\\n  if [ \\\"$fail\\\" -eq 0 ]; then printf 'validation-pass'; else printf 'validation-fail'; fi\\nelif [ -f go.mod ]; then\\n  go build ./... >&2 && go test ./... >&2 || fail=1\\n  if [ \\\"$fail\\\" -eq 0 ]; then printf 'validation-pass'; else printf 'validation-fail'; fi\\nelif [ -f package.json ]; then\\n  npm test >&2 || fail=1\\n  if [ \\\"$fail\\\" -eq 0 ]; then printf 'validation-pass'; else printf 'validation-fail'; fi\\nelse\\n  printf 'validation-unknown'\\nfi\"]
 
-### 8. Review That Reads Code (final review prompt must include)
+### 8. Infrastructure Prerequisites for Testing
+If the tech stack includes services that need local emulators or daemons for testing (Firestore emulator, Postgres, Redis, NATS, etc.), the pipeline MUST handle this. Every verify tool_command that runs tests needing infrastructure MUST start or verify the service is running BEFORE executing tests. Example for Firestore:
+verify_X [shape=diamond, label=\"X Tests Pass?\",
+    tool_command=\"#!/bin/sh\\nset +e\\nfail=0\\n# Start emulator if not running\\nif ! curl -s http://localhost:8080/ >/dev/null 2>&1; then\\n  gcloud emulators firestore start --host-port=localhost:8080 >&2 &\\n  sleep 3\\nfi\\nexport FIRESTORE_EMULATOR_HOST=localhost:8080\\ngo test ./internal/X/... -v >&2 || fail=1\\ngolangci-lint run ./internal/X/... >&2 || fail=1\\nif [ \\\"$fail\\\" -eq 0 ]; then printf 'pass'; else printf 'fail'; fi\"]
+Do NOT assume infrastructure is already running from a previous node — each verify node must be self-contained.
+
+### 9. Review That Reads Code (final review prompt must include)
 ## IRON LAW: NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION
 Run commands. Read output. Check exit codes. THEN make claims.
 1. Get full diff  2. Read every changed file  3. Run test suite
@@ -340,6 +353,7 @@ For each missing pattern, add it to pipeline.dot:
 - [ ] Graduated escalation — debug_investigate -> replan -> done chain at the end
 - [ ] Budget tracking — check_budget parallelogram before E2E retry loop
 - [ ] Language-aware build validation — validate_build parallelogram (MUST use set +e and printf, NOT exit 1)
+- [ ] Infrastructure prerequisites — verify tool_commands start emulators/services before running tests (self-contained, no assumptions)
 - [ ] Review reads code — IRON LAW section in final review prompt
 
 ### Component Coverage
