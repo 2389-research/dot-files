@@ -23,7 +23,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          # Must satisfy the go directive of the pinned tracker/dippin modules
+          # installed below (tracker v0.44.0 → go 1.25.5, dippin v0.48.0 → go
+          # 1.25.4). Keep this ≥ the highest of those so `go install` uses this
+          # toolchain directly instead of relying on an implicit GOTOOLCHAIN
+          # auto-download (which fails where auto-download is disabled). Bump
+          # alongside any TRACKER_VERSION/DIPPIN_VERSION change.
+          go-version: "1.25"
 
       - name: Set up Node (for ajv-cli)
         uses: actions/setup-node@v4
