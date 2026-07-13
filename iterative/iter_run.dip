@@ -11,6 +11,9 @@ workflow IterRun
     max_retries: 3
     max_restarts: 50
     fidelity: summary:medium
+    # Shared STATUS contract (#111) — composed last for every agent; nodes that
+    # must not emit STATUS opt out with `prompt_suffix: none`.
+    prompt_suffix_file: fragments/status-contract.md
 
   # ── PHASE: Setup ────────────────────────────────────────────────────────────
 
@@ -20,10 +23,6 @@ workflow IterRun
     prompt:
       Acknowledge that the iteration execution pipeline is starting. Do not read or write any files. Do not run commands. Do not modify, create, or delete anything.
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Always emit STATUS: success.
 
   agent Exit
@@ -31,10 +30,6 @@ workflow IterRun
     auto_status: true
     prompt:
       Acknowledge that the iteration execution pipeline is complete and report final status. Do not read or write any files. Do not run commands. Do not modify, create, or delete anything.
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Always emit STATUS: success.
 
@@ -88,10 +83,6 @@ workflow IterRun
 
       Report this status to the user. The iteration execution pipeline exits successfully — there is nothing left to do.
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Always emit STATUS: success.
 
   # ── PHASE: Pre-Iteration ─────────────────────────────────────────────────────
@@ -121,10 +112,6 @@ workflow IterRun
       - Total AC count and behavioral AC count
 
       HARD CONSTRAINT: Read-only. Do not modify any artifacts. Do not modify any files outside of .ai/iter-run-temp/.
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Emit STATUS: success when scope.md is written. Emit STATUS: fail only if you could not produce a coherent scope summary (e.g. roadmap or iteration ID is missing).
 
@@ -261,10 +248,6 @@ workflow IterRun
       - If a story is marked done for a different iteration but the inconsistency is a false positive (code does exist), update the roadmap note to reflect the actual state.
       - If stories need to be removed from the iteration scope because they belong to a different iteration, update the roadmap accordingly.
 
-      After making corrections, end with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Use STATUS: success when inconsistencies are resolved.
       Use STATUS: fail when the inconsistencies cannot be automatically resolved and require human intervention.
 
@@ -329,9 +312,7 @@ workflow IterRun
 
       For each check: PASS or FAIL with specific broken references.
 
-      Conclude with the list of blocking issues (if any), then end with exactly one of:
-      STATUS: success
-      STATUS: fail
+      Conclude with the list of blocking issues (if any).
 
       Emit STATUS: success when every check passed (Ready for implementation). Emit STATUS: fail when any check found a blocking artifact (Blocked); the aggregator routes failures into the adjustment loop.
 
@@ -373,13 +354,9 @@ workflow IterRun
 
       For each check: PASS or FAIL with specific implementation concerns.
 
-      Conclude with the list of revisions needed (if any), then end with exactly one of:
-      STATUS: success
-      STATUS: fail
+      Conclude with the list of revisions needed (if any).
 
       Emit STATUS: success when every check passed (Scope approved). Emit STATUS: fail when any check found a feasibility blocker (Revisions needed); the aggregator routes failures into the adjustment loop.
-
-      FINAL LINE RULE: The very last line of your response MUST be exactly `STATUS: success` or `STATUS: fail` — no markdown wrapper, no trailing prose, no whitespace after. Treat this rule as inviolable.
 
   fan_in par_run_scope_join <- par_run_scope_reviewer_a, par_run_scope_reviewer_b
 
@@ -397,10 +374,6 @@ workflow IterRun
       - Severity disagreement between reviewers = take the worst (higher) severity
 
       Summarize the consolidated findings and determine whether the iteration scope is ready for implementation.
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Use STATUS: success when scope is approved (no blocking issues).
       Use STATUS: fail when revisions are needed before implementation can begin.
@@ -449,10 +422,6 @@ workflow IterRun
       Update the scope summary in .ai/iter-run-temp/scope.md to reflect corrections.
 
       HARD CONSTRAINT: Only modify files in docs/iterations/ and .ai/iter-run-temp/. Do not modify source code.
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Emit STATUS: success when you applied the adjustments (re-runs PAR scope review). Emit STATUS: fail when you could not produce a coherent adjustment (pipeline halts so a human can intervene; an unbounded loop here would silently spin).
 
@@ -505,10 +474,6 @@ workflow IterRun
 
       Also write a task status tracker to .ai/iter-run-temp/task_status.txt with one line per task:
       TASK-NN|pending
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Use STATUS: success when task decomposition is complete and tasks.md and task_status.txt are written.
       Use STATUS: fail when decomposition cannot proceed (missing story cards, ambiguous scope, etc.).
@@ -673,8 +638,6 @@ workflow IterRun
 
       HARD CONSTRAINT: Implement ONLY the current task. Do NOT implement future tasks. Do NOT modify .ai/ files other than task_status.txt and impl_status.txt updates. Do NOT read generated directories (node_modules, dist, build, .next).
 
-      FINAL LINE RULE: The very last line of your response MUST be exactly `STATUS: success` or `STATUS: fail` — no markdown wrapper, no trailing prose, no whitespace after. Treat this rule as inviolable.
-
   tool check_impl_status
     label: "Check Implementer Status"
     timeout: 5s
@@ -698,6 +661,7 @@ workflow IterRun
     label: "Provide Context"
     auto_status: true
     writable_paths: .ai/iter-run-temp/**
+    prompt_suffix: none
     prompt:
       The implementer reported NEEDS_CONTEXT or is blocked.
 
@@ -747,10 +711,6 @@ workflow IterRun
       If the task cannot proceed at all:
       - Mark the task as blocked in task_status.txt (change status to blocked)
       - Write a note to .ai/iter-run-temp/escalation_notes.txt explaining what human intervention is needed
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Use STATUS: success when the task has been split or re-queued and the loop can continue.
       Use STATUS: fail when human intervention is required and the pipeline should not continue.
@@ -803,9 +763,7 @@ workflow IterRun
       - AC-N: IMPLEMENTED | MISSING | WRONG — [code file:line] — [explanation]
       - Evidence: ADEQUATE | WEAK | MISSING — [test file:line]
 
-      Conclude with the list of issues found (if any), then end with exactly one of:
-      STATUS: success
-      STATUS: fail
+      Conclude with the list of issues found (if any).
 
       Emit STATUS: success when every AC is IMPLEMENTED with ADEQUATE evidence (Spec compliant). Emit STATUS: fail when any AC is MISSING or WRONG, or evidence is WEAK or MISSING (Issues found); the aggregator routes failures to fix_spec_issues.
 
@@ -856,13 +814,9 @@ workflow IterRun
       **Unrequested Changes:** [list or "none"]
       **Missing Evidence:** [ACs with behavioral_impact but no new test]
 
-      Conclude with the list of issues found (if any), then end with exactly one of:
-      STATUS: success
-      STATUS: fail
+      Conclude with the list of issues found (if any).
 
       Emit STATUS: success when every change is authorized and behavioral ACs have new tests (All changes authorized). Emit STATUS: fail when any change is UNAUTHORIZED or evidence is missing (Issues found); the aggregator routes failures to fix_spec_issues.
-
-      FINAL LINE RULE: The very last line of your response MUST be exactly `STATUS: success` or `STATUS: fail` — no markdown wrapper, no trailing prose, no whitespace after. Treat this rule as inviolable.
 
   fan_in par_spec_join <- par_spec_reviewer_a, par_spec_reviewer_b
 
@@ -884,10 +838,6 @@ workflow IterRun
       - Per-AC spec compliance verdict
       - Evidence quality assessment per AC with behavioral impact
       - Consolidated list of issues to fix
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Use STATUS: success when the implementation is spec-compliant with adequate evidence.
       Use STATUS: fail when spec violations or weak evidence were found.
@@ -928,15 +878,8 @@ workflow IterRun
       - Run the affected test commands to verify they pass
       - Commit the fixes with a clear message
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Use STATUS: success when all spec issues are fixed and tests pass.
       Use STATUS: fail when issues cannot be resolved without more context or the fixes are insufficient.
-
-      FINAL LINE RULE: The very last line of your response MUST be exactly `STATUS: success` or `STATUS: fail` — no markdown wrapper, no trailing prose, no whitespace after. Treat this rule as inviolable.
-
   # ── PHASE: PAR Code-Quality Review (Stage 2) ─────────────────────────────────
 
   parallel par_quality_dispatch -> par_quality_reviewer_a, par_quality_reviewer_b
@@ -980,9 +923,7 @@ workflow IterRun
       **Issues:** Critical / Serious / Minor with file:line refs
       **Corpus Quality:** GOOD | WEAK with specific issues
 
-      Conclude with the specific refactoring required (if any), then end with exactly one of:
-      STATUS: success
-      STATUS: fail
+      Conclude with the specific refactoring required (if any).
 
       Emit STATUS: success when there are no Critical or Serious issues and corpus quality is GOOD (Approved). Emit STATUS: fail when any Critical or Serious issue exists or corpus quality is WEAK (Changes needed); the aggregator routes failures to fix_quality_issues.
 
@@ -1028,13 +969,9 @@ workflow IterRun
       **Navigability:** GOOD | POOR — [specific confusion points]
       **Coordination Creep:** NONE | [files becoming God objects]
 
-      Conclude with the specific architectural changes needed (if any), then end with exactly one of:
-      STATUS: success
-      STATUS: fail
+      Conclude with the specific architectural changes needed (if any).
 
       Emit STATUS: success when Boxing-In is CLEAR, Navigability is GOOD, and Coordination Creep is NONE (Approved). Emit STATUS: fail when any category reports RISK, POOR, or named God objects (Changes needed); the aggregator routes failures to fix_quality_issues.
-
-      FINAL LINE RULE: The very last line of your response MUST be exactly `STATUS: success` or `STATUS: fail` — no markdown wrapper, no trailing prose, no whitespace after. Treat this rule as inviolable.
 
   fan_in par_quality_join <- par_quality_reviewer_a, par_quality_reviewer_b
 
@@ -1057,10 +994,6 @@ workflow IterRun
       - Engineering health issues (abstraction, platform fit, navigability, coordination)
       - Boxing-in assessment for downstream iterations
       - Corpus contribution quality
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Use STATUS: success when the code meets quality standards (no Critical or Serious issues).
       Use STATUS: fail when Critical or Serious issues were found that must be addressed.
@@ -1103,15 +1036,8 @@ workflow IterRun
       - Run the test suite to verify tests still pass after refactoring
       - Commit the refactoring with a clear message
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Use STATUS: success when all Critical and Serious quality issues are resolved.
       Use STATUS: fail when issues cannot be resolved without structural changes that are beyond this task's scope.
-
-      FINAL LINE RULE: The very last line of your response MUST be exactly `STATUS: success` or `STATUS: fail` — no markdown wrapper, no trailing prose, no whitespace after. Treat this rule as inviolable.
-
   # ── PHASE: Task Completion ───────────────────────────────────────────────────
 
   tool mark_task_done
@@ -1273,14 +1199,8 @@ workflow IterRun
       Append the new task to .ai/iter-run-temp/task_status.txt as pending:
       TASK-NN|pending
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Use STATUS: success when the fix task has been created and the loop can continue.
       Use STATUS: fail when the regression cannot be addressed within this iteration.
-
-      FINAL LINE RULE: The very last line of your response MUST be exactly `STATUS: success` or `STATUS: fail` — no markdown wrapper, no trailing prose, no whitespace after. Treat this rule as inviolable.
 
   tool resolve_todos
     label: "Resolve TODOs"
@@ -1353,10 +1273,6 @@ workflow IterRun
          - Regressions encountered: [list or none]
 
       6. Write final progress.md snapshot with phase: completed
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Use STATUS: success when all wrap-up tasks are complete.
       Use STATUS: fail when wrap-up cannot be completed (e.g., uncommitted changes, missing story IDs).

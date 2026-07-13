@@ -10,6 +10,9 @@ workflow IterScope
     provider: anthropic
     max_retries: 3
     max_restarts: 20
+    # Shared STATUS contract (#111) — composed last for every agent; nodes that
+    # must not emit STATUS opt out with `prompt_suffix: none`.
+    prompt_suffix_file: fragments/status-contract.md
 
   tool Start
     label: Start
@@ -61,10 +64,6 @@ workflow IterScope
 
       Report what is valid and what is missing or broken.
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Emit STATUS: success when the existing roadmap is complete and consistent (pipeline can exit). Emit STATUS: fail when the roadmap is missing fields, has broken citations, or is otherwise invalid (pipeline will rebuild).
 
   agent read_backlog
@@ -85,10 +84,6 @@ workflow IterScope
       Create the .ai/iter-scope-temp/ directory if it does not exist.
 
       HARD CONSTRAINT: Do NOT modify any files in docs/iterations/. Only write to .ai/iter-scope-temp/backlog_summary.md.
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Emit STATUS: success when you wrote the backlog summary. Emit STATUS: fail only if you could not produce the summary due to a tool error.
 
@@ -135,10 +130,6 @@ workflow IterScope
       **Harness-first task:** Design and build E2E test harness before product features
       **Sentinel corpus seeds:** <which scenarios become sentinels>
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Emit STATUS: success when skeleton.md is written and includes a journey scenario citation. Emit STATUS: fail only if you could not produce a valid skeleton definition.
 
   agent order_iterations
@@ -179,10 +170,6 @@ workflow IterScope
       **Impacted scenarios:** SCENARIO-NNNN, JOURNEY-NNNN
       **Look-ahead:** <blocks/blocked-by analysis>
       **Story splits:** <any stories split, with AC breakdown> or "None"
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Emit STATUS: success when iterations.md is written. Emit STATUS: fail only if you could not produce a valid iteration ordering.
 
@@ -284,10 +271,6 @@ workflow IterScope
 
       Update both files with correct citations only.
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Emit STATUS: success when you updated the temp files with corrected citations. Emit STATUS: fail only if you could not write the corrections.
 
   parallel par_scope_dispatch -> par_scope_reviewer_a, par_scope_reviewer_b
@@ -338,9 +321,7 @@ workflow IterScope
       - **Scenario Coverage:** PASS | [list of uncovered ACs]
       - **Story Splitting:** PASS | [stories to split with AC breakdown]
 
-      Conclude with specific structural fixes needed (if any), then end with exactly one of:
-      STATUS: success
-      STATUS: fail
+      Conclude with specific structural fixes needed (if any).
 
       Emit STATUS: success when all three sections are PASS (this is your APPROVE verdict). Emit STATUS: fail when any section reports issues that need revision (this is your REVISE verdict). The aggregator routes failures into the adjustment loop.
 
@@ -390,9 +371,7 @@ workflow IterScope
       - **Boxing-In:** PASS | [risks with specific downstream iterations affected]
       - **Ordering Risk:** PASS | [reordering recommendations]
 
-      Conclude with specific strategic changes needed (if any), then end with exactly one of:
-      STATUS: success
-      STATUS: fail
+      Conclude with specific strategic changes needed (if any).
 
       Emit STATUS: success when all three sections are PASS (this is your APPROVE verdict). Emit STATUS: fail when any section reports issues that need revision (this is your REVISE verdict). The aggregator routes failures into the adjustment loop.
 
@@ -413,10 +392,6 @@ workflow IterScope
       - Same issue found by both reviewers = high confidence, must be addressed
       - Unique finding from one reviewer = still actionable, include it
       - Severity disagreement between reviewers = take the worst (higher) severity
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Emit STATUS: success when both reviewers emitted STATUS: success (no revisions needed; pipeline proceeds to write_roadmap). Emit STATUS: fail when either reviewer emitted STATUS: fail; include a consolidated list of specific changes required so the adjustment agent can apply them.
 
@@ -465,10 +440,6 @@ workflow IterScope
 
       Address every issue called out by par_scope_aggregate (it emitted STATUS: fail because the reviewers found revisions). Update both temp files with the corrected scope.
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Emit STATUS: success when you applied the adjustments and the temp files are updated (re-runs the citation check and PAR review). Emit STATUS: fail when you could not produce a coherent adjustment (pipeline force-accepts current scope and proceeds to write_roadmap).
 
   agent write_roadmap
@@ -508,10 +479,6 @@ workflow IterScope
       Continue for all iterations from iterations.md.
 
       If story splits were applied in iterations.md, also update the affected epic files in docs/iterations/requirements/ to reflect the split stories (STORY-NNNNa, STORY-NNNNb format).
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Emit STATUS: success when docs/iterations/roadmap.md is written. Emit STATUS: fail only if you could not produce a valid roadmap.
 
