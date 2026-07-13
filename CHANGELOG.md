@@ -89,6 +89,8 @@ maintainers: see [`RELEASING.md`](./RELEASING.md) for the release-cut convention
 
 ### Changed
 
+- `iterative/iter_dev.dip` + `iterative/fragments/status-contract.md`: proof-of-concept for #111 — dedup the pasted STATUS contract using dippin v0.48.0's shared prompt fragments. The 3-line `End with exactly one of: STATUS: success / STATUS: fail` block moves to a single `prompt_suffix_file:` cascade in `defaults`, composed last for every agent; each agent's specific "Emit STATUS: … when …" guidance stays inline. `dippin pack` inlines the composed prompt (packing-safe). One shared fragment converges the short contract and the stronger FINAL LINE RULE variant to a single strict form (iter_dev's agents upgrade short→strict — same success/fail contract, tighter phrasing). Grade A/95 unchanged. **Requires tracker vendoring dippin ≥ v0.48.0** — dippin/tracker CI stays red until the toolchain pin advances ([#111](https://github.com/2389-research/pipelines/issues/111)).
+
 - `local_code_gen/lib/lang_profile.sh`, `local_code_gen/sprint_runner_qwen.dip`,
   `local_code_gen/sprint_exec_qwen.dip`: deduplicated the cross-module
   test-mandate validator. The per-language test-declaration detector

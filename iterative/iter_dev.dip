@@ -10,6 +10,9 @@ workflow IterDev
     provider: anthropic
     max_retries: 3
     max_restarts: 100
+    # Shared STATUS contract (#111) — composed last for every agent; nodes that
+    # must not emit STATUS opt out with `prompt_suffix: none`.
+    prompt_suffix_file: fragments/status-contract.md
 
   tool Start
     label: Start
@@ -146,10 +149,6 @@ workflow IterDev
 
       IMPORTANT: Write your assessment to .ai/iter-loop-context.txt by APPENDING (do not overwrite). Include: attempt number, failure category, what was tried, what to try differently. This gives the next attempt memory of prior failures.
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Emit STATUS: success when the failure is recoverable (transient error, task-too-large with redecompose plan, model-too-weak with escalation, or first/second attempt at the iteration). Emit STATUS: fail when the failure is unrecoverable: the plan is wrong, the same iteration has failed three or more times, or the failure category requires human intervention.
 
   agent final_audit
@@ -195,10 +194,6 @@ workflow IterDev
 
       If gaps found: write gap descriptions to .ai/iter-audit-result.txt, create gap stories in requirements/, update roadmap with new iteration.
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Emit STATUS: success when every externally observable requirement has passing behavior evidence at the correct seam (audit clean — write the FINAL_AUDIT_CLEAN sentinel). Emit STATUS: fail when any gap was found (gap stories were written and the loop should continue with a remediation iteration).
 
   tool update_final_progress
@@ -237,10 +232,6 @@ workflow IterDev
       Read docs/iterations/final-progress.md (if it exists) and docs/iterations/roadmap.md to report a summary of what was completed.
 
       HARD CONSTRAINT: Do NOT write code. Do NOT create, modify, or delete any files. Your ONLY job is to report the completed state.
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Always emit STATUS: success — this node only runs when the project is already complete.
 
