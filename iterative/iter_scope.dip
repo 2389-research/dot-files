@@ -10,8 +10,9 @@ workflow IterScope
     provider: anthropic
     max_retries: 3
     max_restarts: 20
-    # Shared STATUS contract (#111) — composed last for every agent; nodes that
-    # must not emit STATUS opt out with `prompt_suffix: none`.
+    # Shared STATUS contract (#111): composed last for every agent — all of
+    # them emit STATUS via `auto_status`, so none opt out. A future agent that
+    # must NOT emit STATUS would opt out with `prompt_suffix: none`.
     prompt_suffix_file: fragments/status-contract.md
 
   tool Start

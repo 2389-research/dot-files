@@ -10,8 +10,9 @@ workflow IterAudit
     provider: anthropic
     max_retries: 3
     max_restarts: 20
-    # Shared STATUS contract (#111) — composed last for every agent; nodes that
-    # must not emit STATUS opt out with `prompt_suffix: none`.
+    # Shared STATUS contract (#111): composed last for every agent — all of
+    # them emit STATUS via `auto_status`, so none opt out. A future agent that
+    # must NOT emit STATUS would opt out with `prompt_suffix: none`.
     prompt_suffix_file: fragments/status-contract.md
 
   agent Start
@@ -66,7 +67,6 @@ workflow IterAudit
   agent no_state_exit
     label: "No State Found"
     auto_status: true
-    prompt_suffix: none
     prompt:
       The iteration audit pipeline cannot proceed — required state files are missing.
 
@@ -136,7 +136,6 @@ workflow IterAudit
   agent tbd_gate_fail
     label: "TBD Gate Failed"
     auto_status: true
-    prompt_suffix: none
     prompt:
       The TBD scenario gate has FAILED. There are done stories with scenarios that still have "TBD" as their test command in behavior-corpus.md.
 
