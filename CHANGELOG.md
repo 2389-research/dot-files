@@ -89,6 +89,16 @@ maintainers: see [`RELEASING.md`](./RELEASING.md) for the release-cut convention
 
 ### Changed
 
+- All five `iterative/` workflows (`iter_dev.dip`, `iter_scope.dip`, `iter_extract.dip`, `iter_run.dip`, `iter_audit.dip`) + `iterative/fragments/status-contract.md`: dedup the pasted STATUS contract using dippin v0.48.0's shared prompt fragments (#111). The 3-line `End with exactly one of: STATUS: success / STATUS: fail` block moves to a single `prompt_suffix_file: fragments/status-contract.md` cascade in each `defaults` block, composed last for every agent; each agent's specific "Emit STATUS: … when …" guidance stays inline. One shared fragment converges the short block and the stronger `FINAL LINE RULE:` variant to a single strict form — agents that pasted the short block upgrade short→strict (same success/fail contract, tighter phrasing), agents that already pasted the FINAL LINE RULE keep identical behavior. Every agent across all five files emits STATUS via `auto_status`, so the cascade applies uniformly with no `prompt_suffix: none` opt-outs — the strict contract now reliably lands on every STATUS-routing node (including routers like `iter_run`'s `provide_context`, whose edges branch on `ctx.outcome`). `dippin pack` inlines the composed prompt with exactly one FINAL LINE RULE per agent (packing-safe); `dippin doctor` grade unchanged for every file and `dippin lint` reports no DIP154 no-op opt-outs. Requires tracker ≥ `v0.44.0` (vendors dippin ≥ `v0.48.0`) for the `prompt_suffix_file:` directive — the toolchain floor is advanced in this same change ([#111](https://github.com/2389-research/pipelines/issues/111)).
+- Toolchain pin advanced to the latest lockstep pair: tracker `v0.40.2` → `v0.44.0`,
+  dippin `v0.43.0` → `v0.48.0` (`dev_loop_smoke.yml`), and the README requirement
+  floor raised tracker `≥ v0.39.0` → `≥ v0.44.0`. tracker v0.44.0 vendors dippin
+  v0.48.0, the release that understands the `prompt_suffix_file:` shared-prompt-
+  fragment directive (dippin-lang#175) the `iterative/` cascade above needs; older
+  releases reject it at parse time. `dev_loop.dip` stays Grade A under dippin v0.48.0
+  (`check` + `doctor` + `simulate` + `tracker validate` all clean); no repo `.dip`
+  regresses to an error.
+
 - `local_code_gen/lib/lang_profile.sh`, `local_code_gen/sprint_runner_qwen.dip`,
   `local_code_gen/sprint_exec_qwen.dip`: deduplicated the cross-module
   test-mandate validator. The per-language test-declaration detector

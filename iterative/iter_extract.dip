@@ -10,6 +10,10 @@ workflow IterExtract
     provider: anthropic
     max_retries: 3
     max_restarts: 30
+    # Shared STATUS contract (#111): composed last for every agent — all of
+    # them emit STATUS via `auto_status`, so none opt out. A future agent that
+    # must NOT emit STATUS would opt out with `prompt_suffix: none`.
+    prompt_suffix_file: fragments/status-contract.md
 
   tool Start
     label: Start
@@ -93,10 +97,6 @@ workflow IterExtract
       - docs/iterations/behavior-corpus.md for the corpus table
 
       Report whether they are complete (all stories have ACs, all behavioral ACs have scenario refs, all scenarios link to stories, corpus has all entries).
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Emit STATUS: success when the existing artifacts are complete and consistent (pipeline can exit). Emit STATUS: fail when artifacts are missing, incomplete, or inconsistent (pipeline will re-extract).
 
@@ -294,10 +294,6 @@ workflow IterExtract
 
       HARD CONSTRAINT: Write ONLY the extraction JSON file. Do NOT modify any other files.
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Emit STATUS: success when you wrote the JSON file (or correctly skipped because no chunk was assigned). Emit STATUS: fail only if you could not produce a valid JSON file due to a tool error.
 
   agent extract_agent_2
@@ -366,10 +362,6 @@ workflow IterExtract
 
       HARD CONSTRAINT: Write ONLY the extraction JSON file. Do NOT modify any other files.
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Emit STATUS: success when you wrote the JSON file (or correctly skipped because no chunk was assigned). Emit STATUS: fail only if you could not produce a valid JSON file due to a tool error.
 
   agent extract_agent_3
@@ -437,10 +429,6 @@ workflow IterExtract
       After writing the JSON file, report what you extracted.
 
       HARD CONSTRAINT: Write ONLY the extraction JSON file. Do NOT modify any other files.
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Emit STATUS: success when you wrote the JSON file (or correctly skipped because no chunk was assigned). Emit STATUS: fail only if you could not produce a valid JSON file due to a tool error.
 
@@ -517,10 +505,6 @@ workflow IterExtract
 
       Write patches to .ai/iter-extract-temp/omission_patches_a.json using the extraction JSON format.
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Use STATUS: success when patches were written (or when no omissions were found and patches are intentionally empty).
       Use STATUS: fail only if you could not read the spec or extractions and produced no analysis.
 
@@ -572,10 +556,6 @@ workflow IterExtract
 
       Write patches to .ai/iter-extract-temp/omission_patches_b.json using the extraction JSON format.
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Use STATUS: success when patches were written (or when no omissions were found and patches are intentionally empty).
       Use STATUS: fail only if you could not read the spec or extractions and produced no analysis.
 
@@ -599,10 +579,6 @@ workflow IterExtract
       If patches exist in omission_patches_a.json or omission_patches_b.json, merge them into the extraction results by appending their stories and scenarios into the appropriate extraction_NNN.json files or writing a new extraction_patches.json file.
 
       Summarize what was merged and what the overall omission severity is.
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       STATUS semantics — this is a routing signal, not a crash signal:
 
@@ -653,10 +629,6 @@ workflow IterExtract
       - Sections with coverage: N
       - Sections with gaps: N (list them)
 
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
-
       Emit STATUS: success when no critical gaps remain (all sections have at least one story). Emit STATUS: fail when any section has zero stories.
 
   agent patch_extractions
@@ -680,10 +652,6 @@ workflow IterExtract
       - Write patches to .ai/iter-extract-temp/extraction_patches.json
 
       If no stories can be extracted (section is purely informational with no requirements), mark it as "informational — no stories needed" in the ledger.
-
-      End with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Emit STATUS: success when all gaps are addressed (either patched or marked informational). Emit STATUS: fail when you cannot extract from a section that clearly contains requirements.
 
@@ -751,10 +719,6 @@ workflow IterExtract
       - Behavior corpus has an entry for every scenario
 
       HARD CONSTRAINT: Only write to docs/iterations/. Do NOT modify the original spec.
-
-      End your response with exactly one of:
-      STATUS: success
-      STATUS: fail
 
       Use STATUS: success when all files were written and cross-references verified.
       Use STATUS: fail when critical errors prevented a complete aggregation.
