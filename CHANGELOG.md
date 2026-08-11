@@ -89,6 +89,15 @@ maintainers: see [`RELEASING.md`](./RELEASING.md) for the release-cut convention
 
 ### Changed
 
+- Toolchain pin advanced to the current latest lockstep pair: tracker `v0.44.0`
+  → `v0.63.5`, dippin `v0.48.0` → `v0.64.0` (`dev_loop_smoke.yml`), and the
+  README "currently pinned" pair updated to match. tracker `v0.63.5` vendors
+  dippin `v0.64.0`, so `dippin check/doctor/simulate` still sees the same
+  language semantics as `tracker validate`. The README requirement **floor**
+  (tracker `≥ v0.44.0`, dippin `≥ v0.48.0`) is unchanged — no pipeline uses a
+  post-`v0.48.0` field — this only moves the CI-pinned pair forward off a
+  ~15-release-stale pin. Verified `dev_loop.dip` stays `check`-clean + Grade A
+  (90/100) under dippin `v0.64.0`; no repo `.dip` was modified.
 - All five `iterative/` workflows (`iter_dev.dip`, `iter_scope.dip`, `iter_extract.dip`, `iter_run.dip`, `iter_audit.dip`) + `iterative/fragments/status-contract.md`: dedup the pasted STATUS contract using dippin v0.48.0's shared prompt fragments (#111). The 3-line `End with exactly one of: STATUS: success / STATUS: fail` block moves to a single `prompt_suffix_file: fragments/status-contract.md` cascade in each `defaults` block, composed last for every agent; each agent's specific "Emit STATUS: … when …" guidance stays inline. One shared fragment converges the short block and the stronger `FINAL LINE RULE:` variant to a single strict form — agents that pasted the short block upgrade short→strict (same success/fail contract, tighter phrasing), agents that already pasted the FINAL LINE RULE keep identical behavior. Every agent across all five files emits STATUS via `auto_status`, so the cascade applies uniformly with no `prompt_suffix: none` opt-outs — the strict contract now reliably lands on every STATUS-routing node (including routers like `iter_run`'s `provide_context`, whose edges branch on `ctx.outcome`). `dippin pack` inlines the composed prompt with exactly one FINAL LINE RULE per agent (packing-safe); `dippin doctor` grade unchanged for every file and `dippin lint` reports no DIP154 no-op opt-outs. Requires tracker ≥ `v0.44.0` (vendors dippin ≥ `v0.48.0`) for the `prompt_suffix_file:` directive — the toolchain floor is advanced in this same change ([#111](https://github.com/2389-research/pipelines/issues/111)).
 - Toolchain pin advanced to the latest lockstep pair: tracker `v0.40.2` → `v0.44.0`,
   dippin `v0.43.0` → `v0.48.0` (`dev_loop_smoke.yml`), and the README requirement
