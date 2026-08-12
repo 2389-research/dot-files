@@ -16,6 +16,16 @@ maintainers: see [`RELEASING.md`](./RELEASING.md) for the release-cut convention
 
 ### Added
 
+- `.github/workflows/dip_check.yml`: a **repo-wide structural gate** — every `.dip`
+  in the repo must pass `dippin check` (parse + validation + error-severity lint
+  DIP155–158) under the pinned dippin, on any PR/push that touches a `.dip` or the
+  workflow. Until now only `dev_loop/dev_loop.dip` was gated (`dev_loop_smoke.yml`);
+  the other ~57 pipelines were unguarded — which is how the toolchain pin drifted
+  ~15 releases stale unnoticed. The gate deliberately does **not** enforce `dippin
+  fmt` formatting yet: `dippin fmt` is not comment-preserving (dippin-lang#259), so
+  a `fmt --check` gate would force authors to run a formatter that erases the repo's
+  `# ABOUTME:` / provider-dependency header blocks. `DIPPIN_VERSION` is pinned in
+  lockstep with `dev_loop_smoke.yml` (currently `v0.64.0`); bump both together.
 - `local_code_gen/architect_only.dip`, `local_code_gen/spec_to_sprints.dip`,
   `local_code_gen/spec_to_sprints_lowreason.dip`,
   `local_code_gen/sprint_runner_qwen.dip`,
